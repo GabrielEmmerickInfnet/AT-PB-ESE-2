@@ -1,0 +1,49 @@
+spring:
+  cloud:
+    gateway:
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "http://gateway:9999"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+      routes:
+        - id: estoque
+          uri: lb://SIMPLESPDV-ESTOQUE
+          filters:
+            - StripPrefix=1
+          predicates:
+            - Path=/estoque/**
+        - id: simplespdv
+          uri: lb://SIMPLESPDV
+          filters:
+            - StripPrefix=1
+          predicates:
+            - Path=/simplespdv/**
+
+  application:
+    name: gateway-service
+
+server:
+  port: 9999
+  
+springdoc:
+  swagger-ui:
+    urls:
+      - name: simplespdv
+        url: /simplespdv/v3/api-docs
+      - name: estoque
+        url: /estoque/v3/api-docs
+
+eureka:
+  instance:
+    instance-id: ${spring.application.name}:${random.value}
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
