@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  eureka-server:
+    image: eureka-server
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    ports:
+      - "8761:8761"
+    networks:
+      - eureka-network
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    volumes:
+      - ./rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - eureka-network
+    restart: unless-stopped
+
+  simplespdv-service:
+    image: simplespdv-service
+    build:
+      context: ./simplespdv
+      dockerfile: Dockerfile
+    environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: user
+      SPRING_RABBITMQ_PASSWORD: password
+    depends_on:
+      - eureka-server
+      - rabbitmq
+    networks:
+      - eureka-network
+    restart: unless-stopped
+
+  estoque-service:
+    image: estoque-service
+    build:
+      context: ./estoque
+      dockerfile: Dockerfile
+    environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: user
+      SPRING_RABBITMQ_PASSWORD: password
+    depends_on:
+      - eureka-server
+      - rabbitmq
+    networks:
+      - eureka-network
+    restart: unless-stopped
+
+  gateway-service:
+    image: gateway-service
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      - eureka-server
+      - simplespdv-service
+      - estoque-service
+    ports:
+      - "9999:9999"
+    networks:
+      - eureka-network
+    restart: unless-stopped
+
+networks:
+  eureka-network:
+    driver: bridge
+
+volumes:
+  rabbitmq-data:
